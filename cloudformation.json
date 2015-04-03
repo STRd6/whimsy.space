@@ -1,0 +1,148 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Parameters" : {
+    "PublicDomain" : {
+      "Type" : "String",
+      "Default" : "whimsy.space",
+      "Description" : "Root domain."
+    }
+  },
+  "Resources" : {
+    "LogBucket": {
+      "Type" : "AWS::S3::Bucket",
+      "Properties" : {
+        "AccessControl" : "LogDeliveryWrite"
+      },
+      "DeletionPolicy" : "Retain"
+    },
+    "DataBucket" : {
+      "Type" : "AWS::S3::Bucket",
+      "Properties" : {
+        "AccessControl" : "PublicRead",
+        "CorsConfiguration": {
+          "CorsRules" : [
+            {
+              "AllowedHeaders": ["Content-*"],
+              "AllowedMethods": ["GET", "HEAD", "POST"],
+              "AllowedOrigins": ["*"],
+              "MaxAge": 3000
+            }
+          ]
+        },
+        "LoggingConfiguration" : {
+          "DestinationBucketName" : { "Ref" : "LogBucket"},
+          "LogFilePrefix" : "data/"
+        }
+      },
+      "DeletionPolicy" : "Retain"
+    },
+    "PublicBucketPolicy" : {
+      "Type" : "AWS::S3::BucketPolicy",
+      "Properties" : {
+        "Bucket" : {"Ref" : "DataBucket"},
+        "PolicyDocument": {
+          "Statement":[{
+            "Action":["s3:GetObject"],
+            "Effect":"Allow",
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "DataBucket" } , "/*" ]]},
+            "Principal":"*"
+          }]
+        }
+      }
+    },
+    "UploadUser" : {
+      "Type": "AWS::IAM::User",
+      "Properties": {
+        "Policies": [{
+          "PolicyName": "FullDataBucketAccess",
+          "PolicyDocument" : {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "s3:*",
+                "Resource": [
+                  { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "DataBucket" } , "/" ]]},
+                  { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "DataBucket" } , "/*" ]]}
+                ]
+              }
+            ]
+          }
+        }]
+      }
+    },
+    "UploadUserAccessKey": {
+      "Type": "AWS::IAM::AccessKey",
+      "Properties": {
+          "Status": "Active",
+          "UserName": { "Ref" : "UploadUser" }
+      }
+    },
+    "CloudFrontDistribution" : {
+        "Type" : "AWS::CloudFront::Distribution",
+        "Properties" : {
+            "DistributionConfig" : {
+                "Origins" : [ {
+                    "DomainName": { "Fn::GetAtt" : [ "DataBucket", "DomainName" ] },
+                    "Id" : "S3Origin",
+                    "S3OriginConfig" : {}
+                }],
+                "Enabled" : "true",
+                "Comment" : "WhimsySpace",
+                "Logging" : {
+                    "IncludeCookies" : "false",
+                    "Bucket" : { "Fn::GetAtt" : [ "LogBucket", "DomainName" ] },
+                    "Prefix" : "cloudfront/"
+                },
+                "Aliases" : [ { "Fn::Join" : [".", [ "www", { "Ref" : "PublicDomain" } ] ] } ],
+                "DefaultCacheBehavior" : {
+                    "AllowedMethods" : [ "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT" ],
+                    "TargetOriginId" : "S3Origin",
+                    "ForwardedValues" : {
+                        "QueryString" : "false",
+                        "Headers" : ["Access-Control-Request-Headers", "Access-Control-Request-Method", "Origin"],
+                        "Cookies" : { "Forward" : "none" }
+                    },
+                    "ViewerProtocolPolicy" : "allow-all"
+                },
+               "PriceClass" : "PriceClass_200",
+               "ViewerCertificate" : { "CloudFrontDefaultCertificate" : "true" }
+            }
+        }
+    },
+    "DNS" : {
+      "Type" : "AWS::Route53::RecordSetGroup",
+      "Properties" : {
+        "HostedZoneName": { "Fn::Join" : ["", [ { "Ref" : "PublicDomain" }, "." ] ] },
+        "RecordSets" : [
+          {
+            "Name" : { "Fn::Join" : [".", [ "www", { "Ref" : "PublicDomain" } ] ] },
+            "Type" : "A",
+            "AliasTarget" : {
+              "HostedZoneId" : "Z2FDTNDATAQYW2",
+              "DNSName" : { "Fn::GetAtt" : ["CloudFrontDistribution", "DomainName"] }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs" : {
+    "DataBucketSecureURL" : {
+      "Value" : { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt" : [ "DataBucket", "DomainName" ] } ] ] },
+      "Description" : "Name of data bucket for uploads"
+    },
+    "DataBucketSecureURL" : {
+      "Value" : { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt" : [ "DataBucket", "DomainName" ] } ] ] },
+      "Description" : "Name of S3 bucket to hold website content"
+    },
+    "AccessKey": {
+      "Value": { "Ref" : "UploadUserAccessKey" },
+      "Description" : "Heroku app needs this key"
+    },
+    "SecretKey": {
+      "Value": { "Fn::GetAtt" : [ "UploadUserAccessKey", "SecretAccessKey" ] },
+      "Description" : "Heroku app needs this key"
+    }
+  }
+}
