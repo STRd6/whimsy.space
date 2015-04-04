@@ -1,0 +1,2 @@
+Update CloudFormation to have CloudFront distribution point to custom origin of S3 bucket as a website.
+Update CloudFormation to set S3 bucket to be served as a website

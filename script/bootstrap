@@ -3,3 +3,4 @@ set -e
 
 createdb whimsy_space_dev
 echo "DATABASE_URL=postgres:///whimsy_space_dev" >> .env
+echo "SESSION_SECRET=yolo" >> .env

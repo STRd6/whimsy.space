@@ -120,9 +120,11 @@ GEM
       method_source (~> 0.8.1)
       slop (~> 3.4)
     rack (1.6.0)
+    rack-cors (0.2.9)
     rack-protection (1.5.3)
       rack
     raindrops (0.13.0)
+    rake (10.3.2)
     sequel (4.21.0)
     shotgun (0.9)
       rack (>= 1.0)
@@ -147,6 +149,8 @@ DEPENDENCIES
   mandrill-api
   pg
   pry
+  rack-cors
+  rake
   sequel
   shotgun
   sinatra
