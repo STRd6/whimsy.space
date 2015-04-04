@@ -5,6 +5,11 @@
       "Type" : "String",
       "Default" : "whimsy.space",
       "Description" : "Root domain."
+    },
+    "InboundMXRecords" : {
+      "Type" : "CommaDelimitedList",
+      "Default" : "",
+      "Description" : "MX records to accept inbound mail"
     }
   },
   "Resources" : {
@@ -132,6 +137,11 @@
               "HostedZoneId" : "Z2FDTNDATAQYW2",
               "DNSName" : { "Fn::GetAtt" : ["CloudFrontDistribution", "DomainName"] }
             }
+          }, {
+            "Name" : { "Fn::Join" : [".", [ "inbound", { "Ref" : "PublicDomain" } ] ] },
+            "Type" : "MX",
+            "TTL": 60,
+            "ResourceRecords" : { "Ref" : "InboundMXRecords" }
           }
         ]
       }
