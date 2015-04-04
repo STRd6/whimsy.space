@@ -94,7 +94,10 @@
                     "Bucket" : { "Fn::GetAtt" : [ "LogBucket", "DomainName" ] },
                     "Prefix" : "cloudfront/"
                 },
-                "Aliases" : [ { "Fn::Join" : [".", [ "www", { "Ref" : "PublicDomain" } ] ] } ],
+                "Aliases" : [
+                    { "Ref" : "PublicDomain"},
+                    { "Fn::Join" : [".", [ "www", { "Ref" : "PublicDomain" } ] ] }
+                ],
                 "DefaultCacheBehavior" : {
                     "AllowedMethods" : [ "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT" ],
                     "TargetOriginId" : "S3Origin",
@@ -117,6 +120,13 @@
         "RecordSets" : [
           {
             "Name" : { "Fn::Join" : [".", [ "www", { "Ref" : "PublicDomain" } ] ] },
+            "Type" : "A",
+            "AliasTarget" : {
+              "HostedZoneId" : "Z2FDTNDATAQYW2",
+              "DNSName" : { "Fn::GetAtt" : ["CloudFrontDistribution", "DomainName"] }
+            }
+          }, {
+            "Name" : { "Ref" : "PublicDomain" },
             "Type" : "A",
             "AliasTarget" : {
               "HostedZoneId" : "Z2FDTNDATAQYW2",
