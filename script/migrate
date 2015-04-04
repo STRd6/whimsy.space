@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+
+plz sequel -m migrations/ postgres:///whimsy_space_dev
