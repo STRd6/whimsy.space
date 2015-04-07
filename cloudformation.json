@@ -6,6 +6,11 @@
       "Default" : "whimsy.space",
       "Description" : "Root domain."
     },
+    "APIApp" : {
+      "Type" : "String",
+      "Default" : "whimsy-space.herokuapp.com",
+      "Description" : "API App server."
+    },
     "InboundMXRecords" : {
       "Type" : "CommaDelimitedList",
       "Default" : "",
@@ -37,6 +42,9 @@
         "LoggingConfiguration" : {
           "DestinationBucketName" : { "Ref" : "LogBucket"},
           "LogFilePrefix" : "data/"
+        },
+        "WebsiteConfiguration" : {
+          "IndexDocument" : "index.html"
         }
       },
       "DeletionPolicy" : "Retain"
@@ -88,10 +96,13 @@
         "Properties" : {
             "DistributionConfig" : {
                 "Origins" : [ {
-                    "DomainName": { "Fn::GetAtt" : [ "DataBucket", "DomainName" ] },
-                    "Id" : "S3Origin",
-                    "S3OriginConfig" : {}
+                  "CustomOriginConfig" : {
+                    "OriginProtocolPolicy" : "http-only"
+                  },
+                  "DomainName": { "Fn::Join" : [ ".", [ { "Ref" : "DataBucket" }, "s3-website-us-east-1.amazonaws.com" ] ] },
+                  "Id" : "S3Origin"
                 }],
+                "DefaultRootObject" : "index.html",
                 "Enabled" : "true",
                 "Comment" : "WhimsySpace",
                 "Logging" : {
@@ -142,16 +153,17 @@
             "Type" : "MX",
             "TTL": 60,
             "ResourceRecords" : { "Ref" : "InboundMXRecords" }
+          }, {
+            "Name" : { "Fn::Join" : [".", [ "api", { "Ref" : "PublicDomain" } ] ] },
+            "Type" : "CNAME",
+            "TTL": 60,
+            "ResourceRecords" : [ { "Ref" : "APIApp" } ]
           }
         ]
       }
     }
   },
   "Outputs" : {
-    "DataBucketSecureURL" : {
-      "Value" : { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt" : [ "DataBucket", "DomainName" ] } ] ] },
-      "Description" : "Name of data bucket for uploads"
-    },
     "DataBucketSecureURL" : {
       "Value" : { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt" : [ "DataBucket", "DomainName" ] } ] ] },
       "Description" : "Name of S3 bucket to hold website content"
