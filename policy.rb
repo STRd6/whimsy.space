@@ -8,7 +8,7 @@ module Policy
   MAX_SIZE = 256 * 1024 * 1024 # 256 MB
 
   def self.generate(
-    namespace: "/",
+    namespace: "",
     bucket: ENV["AWS_BUCKET"],
     max_size: MAX_SIZE,
     expiration: "#{(Date.today + 7).iso8601}T12:00:00.000Z",
