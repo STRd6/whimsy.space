@@ -1,11 +1,28 @@
 require 'securerandom'
-require 'sequel'
+require "sinatra/activerecord"
 
-Sequel.connect(ENV['DATABASE_URL'])
+class Person < ActiveRecord::Base
+  validates_presence_of :email
+  validates_presence_of :domain
+  validates_presence_of :persistent_token
 
-class Person < Sequel::Model
-  def before_create
+  validates_format_of :domain, with: /\A[a-z0-9][a-z0-9-]{2,31}\z/
+  validates :domain,
+    exclusion: {
+      in: %w[blog data www] ,
+      message: "%{value} is reserved"
+    }
+
+  before_validation(on: :create) do
+    ensure_token
+    normalize_domain
+  end
+
+  def normalize_domain
+    self.domain.downcase!
+  end
+
+  def ensure_token
     self.persistent_token = SecureRandom.uuid
-    super
   end
 end

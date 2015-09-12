@@ -1,4 +1,4 @@
-ruby '2.0.0'
+ruby '2.2.2'
 source "https://rubygems.org"
 
 gem "fog"
@@ -6,12 +6,13 @@ gem "mandrill-api"
 gem "pg"
 gem "rack-cors"
 gem "rake"
-gem "sequel"
-gem "shotgun"
 gem "sinatra"
+gem "sinatra-activerecord"
+gem "sinatra-contrib"
 gem "unicorn"
 
 group :development do
   gem "foreman"
   gem "pry"
+  gem "shotgun"
 end
