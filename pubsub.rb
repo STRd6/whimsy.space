@@ -7,7 +7,7 @@ class Pubsub
   def initialize(app)
     @app     = app
     @clients = []
-    @channel = "test"
+    @channel = "websockets"
 
     Thread.new do
       ActiveRecord::Base.connection_pool.with_connection do |connection|
