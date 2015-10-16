@@ -91,6 +91,39 @@
           "UserName": { "Ref" : "UploadUser" }
       }
     },
+    "DomainUser" : {
+      "Type": "AWS::IAM::User",
+      "Properties": {
+        "Policies": [{
+          "PolicyName": "FullDataBucketAccess",
+          "PolicyDocument" : {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "cloudfront:*",
+                "Resource": "*"
+              }, {
+                 "Effect":"Allow",
+                 "Action":["route53:ChangeResourceRecordSets"],
+                 "Resource":"arn:aws:route53:::hostedzone/Z37HC4BHZ115H3"
+              }, {
+                 "Effect":"Allow",
+                 "Action":["route53:GetChange"],
+                 "Resource":"arn:aws:route53:::change/*"
+              }
+            ]
+          }
+        }]
+      }
+    },
+    "DomainUserAccessKey": {
+      "Type": "AWS::IAM::AccessKey",
+      "Properties": {
+          "Status": "Active",
+          "UserName": { "Ref" : "DomainUser" }
+      }
+    },
     "CloudFrontDistribution" : {
         "Type" : "AWS::CloudFront::Distribution",
         "Properties" : {
@@ -175,6 +208,14 @@
     "SecretKey": {
       "Value": { "Fn::GetAtt" : [ "UploadUserAccessKey", "SecretAccessKey" ] },
       "Description" : "Heroku app needs this key"
+    },
+    "DomainUserAccessKey": {
+      "Value": { "Ref" : "DomainUserAccessKey" },
+      "Description" : "Heroku app needs this key to manage CloudFront and Route53"
+    },
+    "DomainUserSecretKey": {
+      "Value": { "Fn::GetAtt" : [ "DomainUserAccessKey", "SecretAccessKey" ] },
+      "Description" : "Heroku app needs this key to manage CloudFront and Route53"
     }
   }
 }
