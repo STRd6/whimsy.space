@@ -1,7 +1,7 @@
 ruby '2.2.2'
 source "https://rubygems.org"
 
-gem "fog"
+gem "aws-sdk"
 gem "mandrill-api"
 gem "pg"
 gem "rack-cors"
