@@ -1,5 +1,6 @@
 require 'faye/websocket'
-require "sinatra/activerecord"
+require './database'
+require 'ostruct'
 
 class Pubsub
   KEEPALIVE_TIME = 15 # in seconds
@@ -16,8 +17,15 @@ class Pubsub
         begin
           loop do
             connection.raw_connection.wait_for_notify(0.5) do |channel, pid, payload|
-              @clients.each do |ws|
-                ws.send(payload)
+              message = JSON.parse(payload)
+
+              @clients.each do |client|
+                if client.space == message["space"]
+                  client.ws.send(JSON.generate(
+                    type: message["type"],
+                    data: message["data"]
+                  ))
+                end
               end
             end
           end
@@ -28,12 +36,44 @@ class Pubsub
     end
   end
 
-  def notify(payload)
-    puts "Notify: #{payload}"
+  def notify(data)
+    puts "Notify: #{data}"
     ActiveRecord::Base.connection_pool.with_connection do |connection|
-      sql = "NOTIFY #{@channel}, #{connection.quote(payload)}"
+      sql = "NOTIFY #{@channel}, #{connection.quote(JSON.generate(data))}"
       puts sql
       connection.execute sql
+    end
+  end
+
+  def send_error_message(ws, msg)
+    ws.send(JSON.generate(error: msg))
+  end
+
+  def fs_find(fs, path)
+    fs.select do |file|
+      file["path"] == path
+    end.first
+  end
+
+  def fs_rename(fs, oldPath, newPath)
+    file = fs_find(fs, oldPath)
+
+    file["path"] = newPath
+  end
+
+  def fs_write(fs, data)
+    file = fs_find(fs, data["path"])
+
+    if file
+      file.merge! data
+    else
+      fs.push data
+    end
+  end
+
+  def fs_remove(fs, data)
+    fs.select! do |file|
+      file["path"] != data["path"]
     end
   end
 
@@ -41,20 +81,84 @@ class Pubsub
     if Faye::WebSocket.websocket?(env)
       ws = Faye::WebSocket.new(env, nil, {ping: KEEPALIVE_TIME })
 
+      conn = OpenStruct.new
+      conn.ws = ws
+
       ws.on :open do |event|
         p [:open, ws.object_id]
-        @clients << ws
+        @clients << conn
       end
 
       ws.on :message do |event|
-        p [:message, event.data]
-        self.notify event.data
+        begin
+          message = JSON.parse(event.data)
+
+          p message
+
+          # Handle initialization
+          if message["init"]
+            conn.space = message["space"]
+            conn.token = message["token"]
+          else # Receive FS change event
+            # Validate token
+            person = Person.select("domain").find_by_persistent_token(conn.token)
+
+            unless person
+              self.send_error_message(ws, "Couldn't find user by token")
+              next
+            end
+
+            if person.domain == conn.space
+              # Write fs in db
+              ActiveRecord::Base.transaction do
+                # Read FS
+                person = Person.find_by_persistent_token(conn.token)
+                filesystem = person.filesystem
+
+                puts filesystem
+
+                # Modify
+                case message["type"]
+                when "write"
+                  self.fs_write(filesystem, *message["data"])
+                when "remove"
+                  self.fs_remove(filesystem, *message["data"])
+                when "rename"
+                  self.fs_rename(filesystem, *message["data"])
+                when "overwrite"
+                  filesystem = message["data"]
+                  message["data"] = {}
+                  message["type"] = "reload"
+                end
+
+                p filesystem
+                person.filesystem = filesystem
+                # Save
+                person.save!
+
+                # TODO: Schedule job to write to S3
+              end
+
+              # Broadcast change to all listeners on the same channel
+              self.notify(
+                space: conn.space,
+                data: message["data"],
+                type: message["type"]
+              )
+            else
+              # Ignore event, token doesn't match
+              self.send_error_message(ws, "Token doesn't match domain")
+            end
+          end
+        rescue Exception => e
+          puts e
+        end
       end
 
       ws.on :close do |event|
         p [:close, ws.object_id, event.code, event.reason]
-        @clients.delete(ws)
-        ws = nil
+        @clients.delete(conn)
+        conn.ws = ws = nil
       end
 
       ws.rack_response

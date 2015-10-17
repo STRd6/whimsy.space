@@ -2,6 +2,8 @@ require 'securerandom'
 require "sinatra/activerecord"
 
 class Person < ActiveRecord::Base
+  self.primary_key = :persistent_token
+
   validates_presence_of :email
   validates_presence_of :domain
   validates_presence_of :persistent_token
