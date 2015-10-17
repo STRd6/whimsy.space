@@ -1,8 +1,8 @@
 ruby '2.2.2'
 source "https://rubygems.org"
 
+gem "aws-sdk"
 gem "faye-websocket"
-gem "fog"
 gem "mandrill-api"
 gem "pg"
 gem "rack-cors"
