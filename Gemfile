@@ -10,7 +10,7 @@ gem "rake"
 gem "sinatra"
 gem "sinatra-activerecord"
 gem "sinatra-contrib"
-gem "thin"
+gem "puma"
 
 group :development do
   gem "foreman"

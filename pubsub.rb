@@ -1,6 +1,7 @@
 require 'faye/websocket'
 require './database'
 require 'ostruct'
+require 'aws-sdk'
 
 class Pubsub
   KEEPALIVE_TIME = 15 # in seconds
@@ -9,6 +10,44 @@ class Pubsub
     @app     = app
     @clients = []
     @channel = "websockets"
+    @save_domains = Hash.new(0)
+
+    # S3 Publish Thread
+    Thread.new do
+      s3 = Aws::S3::Resource.new(region: "us-east-1")
+
+      ActiveRecord::Base.connection_pool.with_connection do |connection|
+        begin
+          loop do
+            started = Time.now
+
+            @save_domains.each do |domain, value|
+              if value > 0
+                @save_domains[domain] = 0
+                # Read FS and post to S3
+                person = Person.find_by_domain(domain)
+
+                p [:uploading, domain]
+
+                object = s3.bucket(ENV["AWS_BUCKET"]).object("#{domain}/index.json")
+                object.put(
+                  content_type: "application/json",
+                  cache_control: "max-age=0",
+                  body: JSON.generate(files: person.filesystem)
+                )
+              end
+            end
+
+            finished = Time.now
+            duration = finished - started
+            if duration < 5
+              sleep 5 - duration
+            end
+          end
+        ensure
+        end
+      end
+    end
 
     Thread.new do
       ActiveRecord::Base.connection_pool.with_connection do |connection|
@@ -136,7 +175,8 @@ class Pubsub
                 # Save
                 person.save!
 
-                # TODO: Schedule job to write to S3
+                # Schedule job to write to S3
+                @save_domains[conn.space] += 1
               end
 
               # Broadcast change to all listeners on the same channel
