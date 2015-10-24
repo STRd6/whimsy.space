@@ -10,10 +10,10 @@ gem "rake"
 gem "sinatra"
 gem "sinatra-activerecord"
 gem "sinatra-contrib"
+gem "pry"
 gem "puma"
 
 group :development do
   gem "foreman"
-  gem "pry"
   gem "shotgun"
 end
