@@ -39,7 +39,7 @@ post '/register' do
     person.set_up_subdomain
 
     # Send email with login link
-    Mail.messages.send subject: "Your link to whimsy",
+    res = Mail.messages.send subject: "Your link to whimsy",
       from_email: "duder@inbound.whimsy.space",
       from_name: "Duder von Broheim",
       to: [
@@ -47,7 +47,12 @@ post '/register' do
       ],
       text: "Your ticket to Whimsy: #{person.persistent_token}"
 
-    "Check your email"
+    if res[0]["status"] == "sent"
+      "Check your email"
+    else
+      status 500
+      "Error with yo email perhapms-? #{person.email}"
+    end
   else
     status 418
     "Some kind of error #{person.errors.full_messages}"
