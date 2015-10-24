@@ -2,7 +2,6 @@ require 'pry' if ENV["RACK_ENV"] == "development"
 require 'sinatra'
 require "sinatra/json"
 
-require './cors'
 require './database'
 require './mail'
 require './policy'
