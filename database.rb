@@ -13,7 +13,7 @@ class Person < ActiveRecord::Base
   validates_format_of :domain, with: /\A[a-z0-9][a-z0-9-]{2,31}\z/
   validates :domain,
     exclusion: {
-      in: %w[blog data www] ,
+      in: %w[api blog data www] ,
       message: "%{value} is reserved"
     }
 
