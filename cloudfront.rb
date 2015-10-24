@@ -1,10 +1,37 @@
 require "aws-sdk"
 
 module CloudFront
+  def self.dns_zone_id
+    "Z37HC4BHZ115H3"
+  end
+
   def self.create_subdomain(domain)
     res = self.create_distribution(domain)
     cloudfront_domain = res.distribution.domain_name
     self.create_dns(domain, cloudfront_domain)
+  end
+
+  def self.check_dns(domain)
+    route53 = Aws::Route53::Client.new(
+      credentials: Aws::Credentials.new(ENV["AWS_DOMAIN_ACCESS_KEY"], ENV["AWS_DOMAIN_SECRET_KEY"]),
+      region: 'us-east-1'
+    )
+
+    record_name = "#{domain}.whimsy.space."
+
+    results = route53.list_resource_record_sets({
+      hosted_zone_id: dns_zone_id,
+      start_record_name: record_name,
+      start_record_type: "A",
+      max_items: 1
+    })
+
+    result = results[0]
+
+    return result[0] && result[0].name == record_name
+  end
+
+  def self.check_distribution
   end
 
   def self.create_dns(domain, cloudfront_domain)
@@ -14,7 +41,7 @@ module CloudFront
     )
 
     route53.change_resource_record_sets({
-      hosted_zone_id: "Z37HC4BHZ115H3",
+      hosted_zone_id: dns_zone_id,
       change_batch: {
         comment: "ResourceDescription",
         changes: [{

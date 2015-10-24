@@ -1,6 +1,8 @@
 require 'securerandom'
 require "sinatra/activerecord"
 
+require './cloudfront'
+
 class Person < ActiveRecord::Base
   self.primary_key = :persistent_token
 
@@ -26,5 +28,15 @@ class Person < ActiveRecord::Base
 
   def ensure_token
     self.persistent_token = SecureRandom.uuid
+  end
+
+  def set_up_subdomain
+    begin
+      CloudFront.create_subdomain(domain)
+    rescue Aws::CloudFront::Errors::CNAMEAlreadyExists => e
+      # Assuming everything is fine
+      # TODO: Check dns?
+      return :exists
+    end
   end
 end

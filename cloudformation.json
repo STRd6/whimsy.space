@@ -105,7 +105,7 @@
                 "Resource": "*"
               }, {
                  "Effect":"Allow",
-                 "Action":["route53:ChangeResourceRecordSets"],
+                 "Action":["route53:ChangeResourceRecordSets", "route53:ListResourceRecordSets"],
                  "Resource":"arn:aws:route53:::hostedzone/Z37HC4BHZ115H3"
               }, {
                  "Effect":"Allow",

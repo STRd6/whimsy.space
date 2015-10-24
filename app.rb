@@ -30,10 +30,14 @@ end
 post '/register' do
   # Find or create person by email, setting domain if given
   person = Person.find_or_create_by(email: params[:email]) do |person|
-    person.domain = params[:domain]
+    if person.new_record?
+      person.domain = params[:domain]
+    end
   end
 
   if person.persisted?
+    person.set_up_subdomain
+
     # Send email with login link
     Mail.messages.send subject: "Your link to whimsy",
       from_email: "duder@inbound.whimsy.space",
