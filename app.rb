@@ -28,32 +28,37 @@ end
 
 post '/register' do
   # Find or create person by email, setting domain if given
-  person = Person.find_or_create_by(email: params[:email]) do |person|
-    if person.new_record?
-      person.domain = params[:domain]
+  begin
+    person = Person.find_or_create_by(email: params[:email]) do |person|
+      if person.new_record?
+        person.domain = params[:domain]
+      end
     end
-  end
 
-  if person.persisted?
-    person.set_up_subdomain
+    if person.persisted?
+      person.set_up_subdomain
 
-    # Send email with login link
-    res = Mail.messages.send subject: "Your link to whimsy",
-      from_email: "duder@inbound.whimsy.space",
-      from_name: "Duder von Broheim",
-      to: [
-        email: person.email
-      ],
-      text: "Your ticket to Whimsy: #{person.persistent_token}"
+      # Send email with login link
+      res = Mail.messages.send subject: "Your link to whimsy",
+        from_email: "duder@inbound.whimsy.space",
+        from_name: "Duder von Broheim",
+        to: [
+          email: person.email
+        ],
+        text: "Your ticket to Whimsy: #{person.persistent_token}"
 
-    if res[0]["status"] == "sent"
-      "Check your email"
+      if res[0]["status"] == "sent"
+        json "Check your email"
+      else
+        status 500
+        json "Error with yo email perhapms-? #{person.email}"
+      end
     else
-      status 500
-      "Error with yo email perhapms-? #{person.email}"
+      status 418
+      json "Some kind of error #{person.errors.full_messages}"
     end
-  else
-    status 418
-    "Some kind of error #{person.errors.full_messages}"
+  rescue ActiveRecord::RecordNotUnique => e
+    status 400
+    json "Domain is already taken."
   end
 end
